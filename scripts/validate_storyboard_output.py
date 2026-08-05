@@ -48,12 +48,12 @@ def validate(path: Path) -> list[str]:
         if duration is None:
             errors.append(f"{path}: shot {shot_id}: invalid numeric time range")
             continue
-        required_labels = ("进入：", "过程：", "退出：")
-        missing = [label for label in required_labels if label not in content]
-        if missing:
-            errors.append(f"{path}: shot {shot_id}: 画面内容 missing labels {','.join(missing)}")
-        if duration >= 8 and "变化/反应：" not in content:
-            errors.append(f"{path}: shot {shot_id}: shots >= 8 seconds require 变化/反应： in 画面内容")
+        internal_labels = ("进入：", "过程：", "变化/反应：", "退出：")
+        leaked = [label for label in internal_labels if label in content]
+        if leaked:
+            errors.append(f"{path}: shot {shot_id}: 画面内容泄露内部阶段标签 {','.join(leaked)}")
+        if duration >= 8 and len(re.findall(r"[，。；,;]", content)) < 2:
+            errors.append(f"{path}: shot {shot_id}: 8秒以上镜头画面描述必须包含连续的可观察变化")
 
     if row_number == 0:
         errors.append(f"{path}: no storyboard rows found")
