@@ -57,6 +57,14 @@ def validate(path: Path) -> list[str]:
             errors.append(f"{path}: shot {shot_id}: 8秒以上镜头画面描述必须包含连续的可观察变化")
         if re.search(r"对白|\bOS\b|旁白|画外音|广播", sound) and not re.search(r"[：:\"“]", sound):
             errors.append(f"{path}: shot {shot_id}: 声音列只写了语言类别，没有保留具体原文")
+        quoted_content = re.findall(r"[“\"]([^”\"]+)[”\"]", content)
+        speech_verbs = re.search(r"说[：：“\"]|问[：：“\"]|回答|回应|低语|提起|谈到|告诉|宣布|开口道", content)
+        visible_text_carrier = re.search(r"字幕|屏幕|显示器|信件|纸条|便签|标牌|招牌|广播文字", content)
+        if (quoted_content or speech_verbs) and not visible_text_carrier:
+            errors.append(f"{path}: shot {shot_id}: 语言内容写入了画面内容，应移到声音列")
+        for quote in quoted_content:
+            if quote and quote in sound and not visible_text_carrier:
+                errors.append(f"{path}: shot {shot_id}: 台词在画面内容与声音列重复")
 
     if row_number == 0:
         errors.append(f"{path}: no storyboard rows found")
