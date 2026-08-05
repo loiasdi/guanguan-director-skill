@@ -65,12 +65,21 @@ def validate_shot(path: Path, shot_id: str, block: str) -> list[str]:
         errors.append(f"{path}: {shot_id}: missing visual_timeline with ordered phases")
     else:
         timeline_start = block.find("visual_timeline:")
-        timeline_text = block[timeline_start:]
+        timeline_end = block.find("visual_coverage:", timeline_start)
+        timeline_text = block[timeline_start:timeline_end if timeline_end >= 0 else len(block)]
         if "visible_action:" not in timeline_text or not re.search(r"(?<![A-Za-z_])source:", timeline_text):
             errors.append(f"{path}: {shot_id}: visual_timeline phases require visible_action and source")
         change_types = re.findall(r"change_type:\s*([a-z_]+)", timeline_text)
         if len(change_types) < phase_count:
             errors.append(f"{path}: {shot_id}: every visual_timeline phase requires change_type")
+        source_ids_raw = value(block, "source_content_ids") or ""
+        source_content_ids = {item.strip() for item in re.findall(r"[\w.-]+", source_ids_raw)}
+        if not source_content_ids:
+            errors.append(f"{path}: {shot_id}: missing source_content_ids")
+        phase_sources = {item.strip() for item in re.findall(r"(?<![A-Za-z_])source:\s*([^,}}\n]+)", timeline_text)}
+        invalid_sources = sorted(phase_sources - source_content_ids)
+        if invalid_sources:
+            errors.append(f"{path}: {shot_id}: visual_timeline source is not a script content ID: {','.join(invalid_sources)}")
         actions = re.findall(r"(?m)^\s+visible_action:\s*(.*?)\s*$", timeline_text)
         if any(phrase in action for action in actions for phrase in PHASE_BOILERPLATE):
             errors.append(f"{path}: {shot_id}: visual_timeline uses non-visual phase boilerplate")
@@ -126,6 +135,12 @@ def validate_shot(path: Path, shot_id: str, block: str) -> list[str]:
     for event_line in re.findall(r"(?m)^\s+- \{event:.*$", block):
         if "event_source:" not in event_line:
             errors.append(f"{path}: {shot_id}: timed event missing event_source")
+        else:
+            event_source = re.search(r"event_source:\s*([^,}}]+)", event_line)
+            source_ids_raw = value(block, "source_content_ids") or ""
+            allowed_sources = {item.strip() for item in re.findall(r"[\w.-]+", source_ids_raw)}
+            if event_source and event_source.group(1).strip() not in allowed_sources:
+                errors.append(f"{path}: {shot_id}: timed event source is not in source_content_ids")
 
     viewer_reads = value(block, "viewer_reads")
     if mode in ("empty", "static_empty"):
