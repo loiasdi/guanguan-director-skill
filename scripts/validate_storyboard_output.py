@@ -53,8 +53,13 @@ def validate(path: Path) -> list[str]:
         leaked = [label for label in internal_labels if label in content]
         if leaked:
             errors.append(f"{path}: shot {shot_id}: 画面内容泄露内部阶段标签 {','.join(leaked)}")
-        if duration >= 8 and len(re.findall(r"[，。；,;]", content)) < 2:
-            errors.append(f"{path}: shot {shot_id}: 8秒以上镜头画面描述必须包含连续的可观察变化")
+        sentence_units = [unit.strip() for unit in re.split(r"[。！？；;]+", content) if unit.strip()]
+        minimum_sentences = 3 if duration >= 8 else 2 if duration >= 4 else 1
+        if len(sentence_units) < minimum_sentences:
+            errors.append(
+                f"{path}: shot {shot_id}: {duration:g}秒镜头画面描述至少需要"
+                f"{minimum_sentences}个按时间推进的自然句段"
+            )
         if re.search(r"对白|\bOS\b|旁白|画外音|广播", sound) and not re.search(r"[：:\"“]", sound):
             errors.append(f"{path}: shot {shot_id}: 声音列只写了语言类别，没有保留具体原文")
         quoted_content = re.findall(r"[“\"]([^”\"]+)[”\"]", content)

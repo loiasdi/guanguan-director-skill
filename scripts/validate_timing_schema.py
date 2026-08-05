@@ -93,11 +93,14 @@ def validate_shot(path: Path, shot_id: str, block: str) -> list[str]:
             errors.append(f"{path}: {shot_id}: visual_coverage must reference every visual_timeline phase")
         duration_raw = value(block, "duration_seconds") or ""
         duration_match = re.match(r"\s*(\d+(?:\.\d+)?)", duration_raw)
-        if duration_match and float(duration_match.group(1)) >= 8:
-            if phase_count < 2:
-                errors.append(f"{path}: {shot_id}: shots >= 8 seconds require at least 2 visual_timeline phases")
-            if len(set(change_types)) < 2:
-                errors.append(f"{path}: {shot_id}: shots >= 8 seconds require at least 2 distinct change_type values")
+        if duration_match:
+            duration = float(duration_match.group(1))
+            minimum_phases = 4 if duration >= 8 else 3 if duration >= 4 else 2
+            minimum_change_types = 3 if duration >= 8 else 2
+            if phase_count < minimum_phases:
+                errors.append(f"{path}: {shot_id}: {duration:g}秒镜头至少需要{minimum_phases}个不同视觉阶段")
+            if len(set(change_types)) < minimum_change_types:
+                errors.append(f"{path}: {shot_id}: {duration:g}秒镜头至少需要{minimum_change_types}种可见变化类型")
 
     method = value(block, "timing_method")
     mode = value(block, "timing_mode")
