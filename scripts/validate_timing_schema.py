@@ -20,6 +20,19 @@ def value(block: str, field: str) -> str | None:
 
 FAST_RATE_HINTS = ("抢着说", "快速说", "抢话", "打断")
 SLOW_RATE_HINTS = ("缓慢说", "一字一顿")
+PHASE_BOILERPLATE = (
+    "形成镜头进入状态",
+    "主要动作或信息被观众读取",
+    "动作结果稳定并提供下一镜入口",
+    "信息被观众读取",
+    "提供下一镜入口",
+)
+
+
+def normalize_visible_action(action: str) -> str:
+    for phrase in PHASE_BOILERPLATE:
+        action = action.replace(phrase, "")
+    return re.sub(r"[\s，。；、,:：;]", "", action)
 
 
 def sequence_files(targets: list[Path]) -> list[Path]:
@@ -58,6 +71,12 @@ def validate_shot(path: Path, shot_id: str, block: str) -> list[str]:
         change_types = re.findall(r"change_type:\s*([a-z_]+)", timeline_text)
         if len(change_types) < phase_count:
             errors.append(f"{path}: {shot_id}: every visual_timeline phase requires change_type")
+        actions = re.findall(r"(?m)^\s+visible_action:\s*(.*?)\s*$", timeline_text)
+        if any(phrase in action for action in actions for phrase in PHASE_BOILERPLATE):
+            errors.append(f"{path}: {shot_id}: visual_timeline uses non-visual phase boilerplate")
+        normalized_actions = [normalize_visible_action(action) for action in actions]
+        if len(normalized_actions) >= 2 and len(set(normalized_actions)) < len(normalized_actions):
+            errors.append(f"{path}: {shot_id}: visual_timeline repeats the same visible event across phases")
         coverage = value(block, "visual_coverage") or ""
         covered_phase_ids = set(re.findall(r"P[\w.-]+", coverage))
         phase_ids = set(re.findall(r"phase_id:\s*(?:\{)?(P[\w.-]+)", timeline_text))
