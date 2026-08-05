@@ -1,0 +1,4 @@
+interface:
+  display_name: "关关导演 skill"
+  short_description: "从剧本分析到统一导演方案、节奏规划、分镜拆解与表格输出的完整工作流"
+  default_prompt: "使用 $guanguan-director 从剧本分析开始，按六步完成统一导演方案、节奏规划和分镜输出。"
