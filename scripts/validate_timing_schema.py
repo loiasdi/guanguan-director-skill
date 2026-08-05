@@ -149,6 +149,18 @@ def validate_file(path: Path) -> list[str]:
         if "duration_budget_seconds" in block:
             errors.append(f"{path}: forbidden legacy duration_budget_seconds")
 
+        required_match = re.search(r"(?m)^required_content_ids:\s*\[(.*?)\]\s*$", block)
+        if not required_match:
+            errors.append(f"{path}: missing required_content_ids source inventory")
+        else:
+            required_ids = {item.strip() for item in required_match.group(1).split(",") if item.strip()}
+            covered_ids: set[str] = set()
+            for content_ids in re.findall(r"(?m)^\s+source_content_ids:\s*\[(.*?)\]\s*$", block):
+                covered_ids.update(item.strip() for item in content_ids.split(",") if item.strip())
+            missing_ids = sorted(required_ids - covered_ids)
+            if missing_ids:
+                errors.append(f"{path}: required content not assigned to shots: {','.join(missing_ids)}")
+
         matches = list(SHOT_START.finditer(block))
         if not matches:
             errors.append(f"{path}: no shots found")

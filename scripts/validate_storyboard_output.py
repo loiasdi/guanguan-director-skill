@@ -45,6 +45,7 @@ def validate(path: Path) -> list[str]:
         shot_id = cells[0]
         duration = seconds(cells[1])
         content = cells[4]
+        sound = cells[6]
         if duration is None:
             errors.append(f"{path}: shot {shot_id}: invalid numeric time range")
             continue
@@ -54,6 +55,8 @@ def validate(path: Path) -> list[str]:
             errors.append(f"{path}: shot {shot_id}: 画面内容泄露内部阶段标签 {','.join(leaked)}")
         if duration >= 8 and len(re.findall(r"[，。；,;]", content)) < 2:
             errors.append(f"{path}: shot {shot_id}: 8秒以上镜头画面描述必须包含连续的可观察变化")
+        if re.search(r"对白|\bOS\b|旁白|画外音|广播", sound) and not re.search(r"[：:\"“]", sound):
+            errors.append(f"{path}: shot {shot_id}: 声音列只写了语言类别，没有保留具体原文")
 
     if row_number == 0:
         errors.append(f"{path}: no storyboard rows found")
